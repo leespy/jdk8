@@ -371,7 +371,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
          */
         static final int CANCELLED = 1;
         /**
-         * waitStatus value to indicate successor's thread needs unparking
+         * waitStatus value to indicate(表名) successor(后继者)'s thread needs unparking
          */
         static final int SIGNAL = -1;
         /**
@@ -493,7 +493,8 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
         Node() {    // Used to establish initial head or SHARED marker
         }
 
-        Node(Thread thread, Node mode) {     // Used by addWaiter
+        // nf-eg—2-线程B：thread=Thread.currentThread()  mode=null
+        Node(Thread thread, Node mode) { // Used by addWaiter
             this.nextWaiter = mode;
             this.thread = thread;
         }
@@ -573,27 +574,31 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     static final long spinForTimeoutThreshold = 1000L;
 
     /**
-     * Inserts node into queue, initializing if necessary. See picture above.
+     * 将node节点插入队列末尾
+     *  1>如果是空队列，则初始化一个空内容node作为第一个节点；然后将入参node加到队列末尾
+     *  2>如果不是空队列，则直接入参node加到队列末尾
      *
      * @param node the node to insert
      * @return node's predecessor
      */
-    // 往队列尾部插入node节点
+    // nf-eg—2-线程B ：node=承载线程B的节点
     private Node enq(final Node node) {
         for (; ; ) {
+            // nf-eg—2-线程B ：【第一次循环】tail=null
+            // nf-eg—2-线程B ：【第二次循环】tail=head=空内容node
             Node t = tail;
             /**
              * eg：第一次进入由于队列为null，所以t==null
              * eg：第二次进入，由于队列已经被初始化1个节点，所以t!=null
              */
-            if (t == null) { // 如果tail节点为null，表明这是空的队列，需要初始化
-                if (compareAndSetHead(new Node())) { // 初始化一个空内容的节点
+            if (t == null) { // nf-eg—2-线程B ：【第一次循环】满足t==null，进入该模块内
+                if (compareAndSetHead(newde())) { /** 初始化一个空内容的节点，作为AQS.head节点 */
                     tail = head;
                 }
-            } else {
-                node.prev = t; // （老的尾部node） <--- prev（入参node）
-                if (compareAndSetTail(t, node)) { // 将tailOffset内容更新为入参node
-                    t.next = node; // （老的尾部node） （老的尾部node）next ---> 入参node
+            } else { // nf-eg—2-线程B ：【第二次循环】满足t!=null，进入该模块内，即：空内容node<->新内容node
+                node.prev = t; /**（老的尾部node） <--- prev（入参node） */
+                if (compareAndSetTail(t, node)) { /** 将AQS.tailOffset内容更新为入参node */
+                    t.next = node; /**（老的尾部node）next ---> 入参node */
                     return t;
                 }
             }
@@ -601,22 +606,24 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     }
 
     /**
-     * Creates and enqueues node for current thread and given mode.
+     * 为代表当前线程并指定模式为mode的节点创建/进入队列。
      *
      * @param mode Node.EXCLUSIVE for exclusive, Node.SHARED for shared
      * @return the new node
      */
+    // nf-eg—2-线程B ：mode=Node.EXCLUSIVE
     private Node addWaiter(Node mode) {
         Node node = new Node(Thread.currentThread(), mode);
-        // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
+        // nf-eg—2-线程B ：由于线程A并没有进入链表，所以tail=null，不会进入if方法
         if (pred != null) {
-            node.prev = pred; // （老的尾部node） <--- prev（新node）
+            node.prev = pred; /**（老的尾部node） <--- prev（新node）*/
             if (compareAndSetTail(pred, node)) {
-                pred.next = node; // （老的尾部node）next --->（新node）
+                pred.next = node; /**（老的尾部node）next --->（新node）*/
                 return node;
             }
         }
+        // nf-eg—2-线程B ：node=承载线程B的node
         enq(node);
         return node;
     }
@@ -799,7 +806,8 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     }
 
     /**
-     * true：标识线程可以被挂起
+     * 当获取锁失败的时候，针对入参node的prev node做检查和更新AQS.status
+     * true：表示线程应该被阻塞
      *
      * Checks and updates status for a node that failed to acquire.
      * Returns true if thread should block. This is the main signal
@@ -809,13 +817,15 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @param node the node
      * @return {@code true} if thread should block
      */
+    // nf-eg—2-线程B：pred=空内容的node， node=线程B内容的node
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
+        // nf-eg—2-线程B：由于pred=空内容的node，所以ws=0
         int ws = pred.waitStatus;
-        if (ws == Node.SIGNAL)
+        if (ws == Node.SIGNAL) {
             /*
              * This node has already set status asking a release释放
              * to signal信号 it, so it can safely park.
-             */ {
+             */
             return true;
         }
         if (ws > 0) {
@@ -827,12 +837,13 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
                 node.prev = pred = pred.prev; // 入参node的prev节点指向了pred节点的pred节点。
             } while (pred.waitStatus > 0);
             pred.next = node;
-        } else {
+        } else { // nf-eg—2-线程B：由于ws=0，进入该方法块中
             /*
              * waitStatus must be 0 or PROPAGATE.  Indicate that we
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
              */
+            // nf-eg—2-线程B：将AQS.waitStatus设置为-1（Node.SIGNAL）
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
         return false;
@@ -850,6 +861,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *
      * @return {@code true} if interrupted
      */
+    // nf-eg—2-线程B：挂起线程B，判断线程B是否被执行过interrupt，并且清除掉interrupt标识，此处应该返回false
     private final boolean parkAndCheckInterrupt() {
         LockSupport.park(this);
         return Thread.interrupted();
@@ -872,19 +884,24 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @param arg  the acquire argument
      * @return {@code true} if interrupted while waiting
      */
+    // nf-eg—2-线程B：node=承载线程B的节点  arg=1
     final boolean acquireQueued(final Node node, int arg) {
         boolean failed = true;
         try {
             boolean interrupted = false;
+            // nf-eg—2-线程B：会一直循环，直到拿到锁
             for (; ; ) {
+                // nf-eg—2-线程B：p=空内容node（head）
                 final Node p = node.predecessor();
-                // 如果p节点是头节点，并且可以获得锁
+                // nf-eg—2-线程B：p == head等于true；但是由于线程A先抢到锁，所以tryAcquire(arg)=false，所以不会进入下面的if模块
                 if (p == head && tryAcquire(arg)) {
                     setHead(node); // 更新头节点为入参node
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
+                // nf-eg—2-线程B：shouldParkAfterFailedAcquire方法，用户设置p节点的waitStatus=Node.SIGNAL，返回false
+                // nf-eg—2-线程B：parkAndCheckInterrupt方法，挂起线程B，判断线程B是否被执行过interrupt，并且清除掉interrupt标识，此处为false
                 if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
                     interrupted = true;
                 }
@@ -1236,8 +1253,13 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *            {@link #tryAcquire} but is otherwise uninterpreted and
      *            can represent anything you like.
      */
-    // 获得独占锁 eg: arg=1
+    // nf-eg—2-线程B：arg=1
+    // f-eg—1-线程A：arg=1
     public final void acquire(int arg) {
+        // nf-eg—2-线程B： 尝试获得非公平锁，由于已经被线程A抢到，所以tryAcquire(arg)=false
+        // nf-eg—2-线程B： addWaiter方法，构建承载线程B的node，然后添加到队列末尾，并返回该node
+        // nf-eg—2-线程B： acquireQueued方法，
+        // f-eg—1-线程A：尝试获得公平锁
         if (!tryAcquire(arg) && acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
             // 设置当前线程的中断标识
             selfInterrupt();
@@ -1304,6 +1326,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *            can represent anything you like.
      * @return the value returned from {@link #tryRelease}
      */
+    // nf-eg—1-线程A：arg=1
     public final boolean release(int arg) {
         if (tryRelease(arg)) {
             Node h = head;
@@ -1566,19 +1589,25 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * current thread, and {@code false} if the current thread
      * is at the head of the queue or the queue is empty
      * @since 1.7
+     *
+     * 查询是否存在比当前线程等待获取锁时间更长的线程（predecessors前任）
+     * 返回false代表队列中没有节点或者仅有一个节点是当前线程创建的节点。
+     * // 返回true则代表队列中存在等待节点，当前线程需要入队等待。
      */
-    // 判断AQS等待队列中是否有元素存在，
-    // 返回false代表队列中没有节点或者仅有一个节点是当前线程创建的节点。
-    // 返回true则代表队列中存在等待节点，当前线程需要入队等待。
+    // f-eg—1-线程A：
     public final boolean hasQueuedPredecessors() {
         // The correctness of this depends on head being initialized
         // before tail and on head.next being accurate if the current
         // thread is first in queue.
-        Node t = tail; // Read fields in reverse initialization order
+
+        // f-eg—1-线程A：由于线程A是第一个线程，所以tail
+        Node t = tail;
         Node h = head;
         Node s;
         /**
-         * h != t：说明队列中至少有2个或2个以上的节点。
+         * h != t -————> 队列中至少有2个或2个以上的节点。
+         * (s = h.next) == null -————> 只有一个node。
+         * s.thread != Thread.currentThread() -————> 第二个节点承载的线程不是当前线程
          */
         return h != t && ((s = h.next) == null || s.thread != Thread.currentThread());
     }
