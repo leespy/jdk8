@@ -592,7 +592,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
              * eg：第二次进入，由于队列已经被初始化1个节点，所以t!=null
              */
             if (t == null) { // nf-eg—2-线程B ：【第一次循环】满足t==null，进入该模块内
-                if (compareAndSetHead(newde())) { /** 初始化一个空内容的节点，作为AQS.head节点 */
+                if (compareAndSetHead(new Node())) { /** 初始化一个空内容的节点，作为AQS.head节点 */
                     tail = head;
                 }
             } else { // nf-eg—2-线程B ：【第二次循环】满足t!=null，进入该模块内，即：空内容node<->新内容node
@@ -647,31 +647,26 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      * @param node the node
      */
     private void unparkSuccessor(Node node) {
-        /*
-         * If status is negative (i.e., possibly needing signal) try
-         * to clear in anticipation of signalling.  It is OK if this
-         * fails or if status is changed by waiting thread.
-         */
+        // nf-eg—1-线程A： node.waitStatus==SIGNAL(-1)
         int ws = node.waitStatus;
+
         if (ws < 0) {
+            // nf-eg—1-线程A： node.waitStatus==0
             compareAndSetWaitStatus(node, ws, 0);
         }
 
-        /*
-         * Thread to unpark is held in successor, which is normally
-         * just the next node.  But if cancelled or apparently null,
-         * traverse backwards from tail to find the actual
-         * non-cancelled successor.
-         */
         Node s = node.next;
-        if (s == null || s.waitStatus > 0) {
-            s = null;
+        // nf-eg—1-线程A： s==线程B，s.waitStatus==SIGNAL(-1)，所以不满足
+        if (s == null || s.waitStatus > 0) { // node是tail 或者 node的tail节点waitStatus>0
+            s = null; // 断开node与node.next的链接
             for (Node t = tail; t != null && t != node; t = t.prev) {
                 if (t.waitStatus <= 0) {
                     s = t;
                 }
             }
         }
+
+        // nf-eg—1-线程A： s==线程B，激活线程B
         if (s != null) {
             LockSupport.unpark(s.thread);
         }
@@ -864,6 +859,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     // nf-eg—2-线程B：挂起线程B，判断线程B是否被执行过interrupt，并且清除掉interrupt标识，此处应该返回false
     private final boolean parkAndCheckInterrupt() {
         LockSupport.park(this);
+        //LockSupport.park()不会抛出InterruptedException异常，它只会默默返回，但我们还是可以通过Thread.interrupted()来获得中断标记
         return Thread.interrupted();
     }
 
@@ -894,7 +890,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
                 // nf-eg—2-线程B：p=空内容node（head）
                 final Node p = node.predecessor();
                 // nf-eg—2-线程B：p == head等于true；但是由于线程A先抢到锁，所以tryAcquire(arg)=false，所以不会进入下面的if模块
-                if (p == head && tryAcquire(arg)) {
+                if (p == head && tryAcquire(arg)) { /**tryAcquire(arg) 进行抢锁操作*/
                     setHead(node); // 更新头节点为入参node
                     p.next = null; // help GC
                     failed = false;
@@ -1328,8 +1324,9 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      */
     // nf-eg—1-线程A：arg=1
     public final boolean release(int arg) {
-        if (tryRelease(arg)) {
+        if (tryRelease(arg)) { // nf-eg—1-线程A：AQS.state=0，AQS.exclusiveOwnerThread=null
             Node h = head;
+            // nf-eg—1-线程A：满足条件 h.waitStatus==SIGNAL(-1)
             if (h != null && h.waitStatus != 0) {
                 unparkSuccessor(h);
             }
