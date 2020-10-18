@@ -623,7 +623,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
                 return node;
             }
         }
-        // nf-eg—2-线程B ：node=承载线程B的node
+        // nf-eg—2-线程B ：node=承载线程B的node 返回值为首节点承载null的node
         enq(node);
         return node;
     }
