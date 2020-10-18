@@ -298,8 +298,11 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
          * A << 1 等于 A*2
          * eg: 3 << 1 = 3*2 = 6
          *     4 << 1 = 4*2 = 8
+         *
+         * 000100 >> 1 = 000010
+         * 000100 << 1 = 001000
          */
-        /** 新增oldCapacity的一半整数长度作为newCapacity */
+        /** 新增oldCapacity的一半整数长度作为newCapacity的额外增长长度 */
         int newCapacity = oldCapacity + (oldCapacity >> 1); // eg1：newCapacity=0+(0>>1)=0
 
         /** 新的长度newCapacity依然无法满足需要的最小扩容量minCapacity，则新的扩容长度为minCapacity */

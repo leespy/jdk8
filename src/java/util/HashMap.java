@@ -324,7 +324,8 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
      * to incorporate impact of the highest bits that would otherwise
      * never be used in index calculations because of table bounds.
      */
-    // eg1: key="k1"
+    // egx: key="k1"
+    // eg1: key=0
     static final int hash(Object key) {
         int h;
         /**
@@ -336,8 +337,19 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
          *      【低半区16位】数据与高半区16位数据进行异或操作，以此来加大低位的随机性。
          * 注意：如果key的哈希code小于等于16位，那么是没有任何影响的。只有大于16位，才会触发扰动函数的执行效果。
          * */
-        // eg1: 110100100110^000000000000=110100100110，由于k1的hashCode都是在低16位，所以原样返回3366
+        // egx: 110100100110^000000000000=110100100110，由于k1的hashCode都是在低16位，所以原样返回3366
         return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+
+        /**
+         * case1:
+         *  h=高16位(全是0) and 低16位(有1)
+         *  h >>> 16 = 低16位全部消失，那么变成了32位(全是0)
+         *  h ^ (h >>> 16) = 原样输出
+         * case2：
+         *  h=高16位(有1) and 低16位(有1)
+         *  h >>> 16 = 低16位全部消失，那么变成了高16位(全是0)and低16位(有1)
+         *  h ^ (h >>> 16) = 不是原样输出  将原高16位于原低16位进行扰动。
+         */
     }
 
     /**
