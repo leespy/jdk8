@@ -1450,26 +1450,31 @@ public final class String
     }
 
     /**
-     * Returns a hash code for this string. The hash code for a
-     * {@code String} object is computed as
-     * <blockquote><pre>
-     * s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
-     * </pre></blockquote>
-     * using {@code int} arithmetic, where {@code s[i]} is the
-     * <i>i</i>th character of the string, {@code n} is the length of
-     * the string, and {@code ^} indicates exponentiation.
-     * (The hash value of the empty string is zero.)
+     * 计算String的哈希值
      *
-     * @return  a hash code value for this object.
+     * 假设 n=3
+     * i=0 -> h = 31 * 0 + val[0]
+     * i=1 -> h = 31 * (31 * 0 + val[0]) + val[1]
+     * i=2 -> h = 31 * (31 * (31 * 0 + val[0]) + val[1]) + val[2]
+     *        h = 31*31*31*0 + 31*31*val[0] + 31*val[1] + val[2]
+     *        h = 31^(n-1)*val[0] + 31^(n-2)*val[1] + val[2]
+     * 即：
+     *    s[0]*31^(n-1) + s[1]*31^(n-2) + ... + s[n-1]
      */
+    // eg1: key="k1"
     public int hashCode() {
+        // eg1: hash=0 h=0
         int h = hash;
+        // eg1: value={'k','1'} value.length=2
+        /** 只有第一次计算hash值时，才进入下面逻辑中。此后调用hashCode方法，都直接返回hash*/
         if (h == 0 && value.length > 0) {
             char val[] = value;
 
             for (int i = 0; i < value.length; i++) {
+                // eg1: val[0]=107 val[1]=49
                 h = 31 * h + val[i];
             }
+            // eg1: 31(31*0+107)+49=3366
             hash = h;
         }
         return h;

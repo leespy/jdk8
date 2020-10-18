@@ -838,7 +838,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
              */
-            // nf-eg—2-线程B：将AQS.waitStatus设置为-1（Node.SIGNAL）
+            // nf-eg—2-线程B：将前置node的AQS.waitStatus设置为-1（Node.SIGNAL）
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
         return false;
@@ -927,8 +927,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
                     failed = false;
                     return;
                 }
-                if (shouldParkAfterFailedAcquire(p, node) &&
-                        parkAndCheckInterrupt()) {
+                if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
                     throw new InterruptedException();
                 }
             }
@@ -967,8 +966,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
                 if (nanosTimeout <= 0L) {
                     return false;
                 }
-                if (shouldParkAfterFailedAcquire(p, node) &&
-                        nanosTimeout > spinForTimeoutThreshold) {
+                if (shouldParkAfterFailedAcquire(p, node) && nanosTimeout > spinForTimeoutThreshold) {
                     LockSupport.parkNanos(this, nanosTimeout);
                 }
                 if (Thread.interrupted()) {
