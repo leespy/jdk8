@@ -631,7 +631,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
     // eg2: hashMap.put(1, "a1");
     // eg3: hashMap.put(16, "a16");
     // eg4: hashMap.put(32, "a32");
-    // eg5: hashMap.put(16, "a16");hashMap.put(32, "a32");hashMap.put(48, "a48");hashMap.put(64, "a64");hashMap.put(80, "a80");hashMap.put(96, "a96");hashMap.put(112, "a112");
+    // eg5: hashMap.put(48, "a48");hashMap.put(64, "a64");hashMap.put(80, "a80");hashMap.put(96, "a96");hashMap.put(112, "a112");
     // eg6: hashMap.put(128, "a128");
     public V put(K key, V value) {
         return putVal(hash(key), key, value, false, true);
@@ -2484,14 +2484,21 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
          * @param bit   the bit of hash to split on
          */
         final void split(HashMap<K, V> map, Node<K, V>[] tab, int index, int bit) {
+            // 做个赋值，因为这里是((TreeNode<K,V>)e)这个对象调用split()方法，所以this就是指(TreeNode<K,V>)e对象，所以才能类型对应赋值
             TreeNode<K, V> b = this;
-            // Relink into lo and hi lists, preserving order
+            // 设置低位首节点和低位尾节点
             TreeNode<K, V> loHead = null, loTail = null;
+            // 设置高位首节点和高位尾节点
             TreeNode<K, V> hiHead = null, hiTail = null;
+            // 定义两个变量lc和hc，初始值为0，后面比较要用，他们的大小决定了红黑树是否要转回链表
             int lc = 0, hc = 0;
+            // 这个for循环就是对从e节点开始对整个红黑树做遍历
             for (TreeNode<K, V> e = b, next; e != null; e = next) {
+                // 取e的下一节点赋值给next遍历
                 next = (TreeNode<K, V>) e.next;
+                // 取好e的下一节点后，把它赋值为空，方便GC回收
                 e.next = null;
+                // 以下的操作就是做个按位与运算，按照结果拉出两条链表
                 if ((e.hash & bit) == 0) {
                     if ((e.prev = loTail) == null) {
                         loHead = e;
@@ -2499,6 +2506,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                         loTail.next = e;
                     }
                     loTail = e;
+                    // 做个计数，看下拉出低位链表下会有几个元素
                     ++lc;
                 } else {
                     if ((e.prev = hiTail) == null) {
@@ -2507,27 +2515,39 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                         hiTail.next = e;
                     }
                     hiTail = e;
+                    // 做个计数，看下拉出高位链表下会有几个元素
                     ++hc;
                 }
             }
 
+            // 如果低位链表首节点不为null，说明有这个链表存在
             if (loHead != null) {
+                // 如果链表下的元素小于等于6
                 if (lc <= UNTREEIFY_THRESHOLD) {
+                    // 那就从红黑树转链表了，低位链表，迁移到新数组中下标不变，还是等于原数组到下标
                     tab[index] = loHead.untreeify(map);
                 } else {
+                    // 低位链表，迁移到新数组中下标不变，还是等于原数组到下标，把低位链表整个拉到这个下标下，做个赋值
                     tab[index] = loHead;
-                    if (hiHead != null) // (else is already treeified)
-                    {
+                    // 如果高位首节点不为空，说明原来的红黑树已经被拆分成两个链表了
+                    if (hiHead != null) {
+                        //那么就需要构建新的红黑树了
                         loHead.treeify(tab);
                     }
                 }
             }
+            // 如果高位链表首节点不为null，说明有这个链表存在
             if (hiHead != null) {
+                // 如果链表下的元素小于等于6
                 if (hc <= UNTREEIFY_THRESHOLD) {
+                    // 那就从红黑树转链表了，高位链表，迁移到新数组中的下标=【旧数组+旧数组长度】
                     tab[index + bit] = hiHead.untreeify(map);
                 } else {
+                    // 高位链表，迁移到新数组中的下标=【旧数组+旧数组长度】，把高位链表整个拉到这个新下标下，做赋值
                     tab[index + bit] = hiHead;
+                    // 如果低位首节点不为空，说明原来的红黑树已经被拆分成两个链表了
                     if (loHead != null) {
+                        // 那么就需要构建新的红黑树了
                         hiHead.treeify(tab);
                     }
                 }
