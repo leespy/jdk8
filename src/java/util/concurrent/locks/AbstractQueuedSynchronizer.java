@@ -1251,9 +1251,9 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     // f-eg—1-线程A：arg=1
     public final void acquire(int arg) {
         // nf-eg—2-线程B： 尝试获得非公平锁，由于已经被线程A抢到，所以tryAcquire(arg)=false
-        // nf-eg—2-线程B： addWaiter方法，构建承载线程B的node，然后添加到队列末尾，并返回该node
-        // nf-eg—2-线程B： acquireQueued方法，
-        // f-eg—1-线程A：尝试获得公平锁
+        //                addWaiter方法，构建承载线程B的node，然后添加到队列末尾，并返回该node
+        //                acquireQueued方法，
+        // f-eg—1-线程A：  尝试获得公平锁
         if (!tryAcquire(arg) && acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
             // 设置当前线程的中断标识
             selfInterrupt();
