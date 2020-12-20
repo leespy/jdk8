@@ -128,7 +128,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         abstract void lock();
 
         /**
-         * 是否抢到非公平锁
+         * 进行抢锁操作，是否抢到非公平锁
          *
          * 处理内容：
          * 1>如果抢到锁，返回true
@@ -172,9 +172,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         }
 
         /**
-         * 尝试释放锁
-         * @param releases
-         * @return
+         * 判断是否可以进行释放锁操作
          */
         // nf-eg—1-线程A：releases=1
         protected final boolean tryRelease(int releases) {
@@ -280,7 +278,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         }
 
         /**
-         * 判断当前线程是否成功的抢占锁
+         * 进行抢锁操作，返回是否成功
          * 抢占成功条件：
          * case1> 没人抢占锁，线程A执行抢占锁操作，执行成功。
          * case2> 有人已经抢占了这个锁，但是抢占这个锁的线程就是线程A自己，那么对自己重入加锁，执行成功。

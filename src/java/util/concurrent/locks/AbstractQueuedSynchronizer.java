@@ -353,34 +353,32 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      */
     static final class Node {
         /**
-         * Marker to indicate a node is waiting in shared mode
-         * <p>
          * 共享模式节点
          */
         static final Node SHARED = new Node();
 
         /**
-         * Marker to indicate a node is waiting in exclusive mode
-         * <p>
          * 独占模式节点
          */
         static final Node EXCLUSIVE = null;
 
         /**
-         * waitStatus value to indicate thread has cancelled
+         *  CANCELLED值，表明线程已取消
          */
         static final int CANCELLED = 1;
+
         /**
-         * waitStatus value to indicate(表名) successor(后继者)'s thread needs unparking
+         * SIGNAL值，表明后续线程需要释放
          */
         static final int SIGNAL = -1;
+
         /**
-         * waitStatus value to indicate thread is waiting on condition
+         * CONDITION值，指示线程正在等待条件
          */
         static final int CONDITION = -2;
+
         /**
-         * waitStatus value to indicate the next acquireShared should
-         * unconditionally propagate
+         * PROPAGATE值，指示下一个acquireShared应该无条件传播
          */
         static final int PROPAGATE = -3;
 
@@ -649,19 +647,29 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *
      * @param node the node
      */
+    // nf-eg—1-线程A： node为头节点head
     private void unparkSuccessor(Node node) {
         // nf-eg—1-线程A： node.waitStatus==SIGNAL(-1)
         int ws = node.waitStatus;
 
+        /** ws为非CANCELLED(1)状态 */
         if (ws < 0) {
             // nf-eg—1-线程A： node.waitStatus==0
             compareAndSetWaitStatus(node, ws, 0);
         }
 
+        /** 获得head节点的后续节点 */
         Node s = node.next;
+
         // nf-eg—1-线程A： s==线程B，s.waitStatus==SIGNAL(-1)，所以不满足
-        if (s == null || s.waitStatus > 0) { // node是tail 或者 node的tail节点waitStatus>0
-            s = null; // 断开node与node.next的链接
+        /**
+         * node是tail节点 或者 node的tail节点waitStatus>0，即：CANCELLED(1)
+         */
+        if (s == null || s.waitStatus > 0) {
+            s = null; // 通知GC可以对s进行回收
+            /**
+             * 从尾节点开始向头节点遍历，遍历到整个队列最前排的waitStatus<=0的节点，赋值给s，用于后续的unpark操作。
+             */
             for (Node t = tail; t != null && t != node; t = t.prev) {
                 if (t.waitStatus <= 0) {
                     s = t;
@@ -671,7 +679,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
 
         // nf-eg—1-线程A： s==线程B，激活线程B
         if (s != null) {
-            LockSupport.unpark(s.thread);
+            LockSupport.unpark(s.thread); /** 针对head节点的后续节点，执行unpark唤醒操作，促使其再次执行抢锁操作*/
         }
     }
 
@@ -804,24 +812,20 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
     }
 
     /**
+     * 判断当获取锁失败的时候，是否应该挂起该线程
+     *
      * 当获取锁失败的时候，针对入参node的prev node做检查和更新AQS.status
      * true：表示线程应该被阻塞
-     *
-     * Checks and updates status for a node that failed to acquire.
-     * Returns true if thread should block. This is the main signal
-     * control in all acquire loops.  Requires that pred == node.prev.
-     *
-     * @param pred node's predecessor holding status
-     * @param node the node
-     * @return {@code true} if thread should block
      */
     // nf-eg—2-线程B：pred=空内容的node， node=线程B内容的node
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         // nf-eg—2-线程B：由于pred=空内容的node，所以ws=0
+        /** 获得pred节点（node的前置节点）的waitStatus*/
         int ws = pred.waitStatus;
         if (ws == Node.SIGNAL) {
             return true;
         }
+
         /** 如果waitStatus是CANCELLED */
         if (ws > 0) {
             do {
@@ -851,10 +855,12 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      *
      * @return {@code true} if interrupted
      */
-    // nf-eg—2-线程B：挂起线程B，判断线程B是否被执行过interrupt，并且清除掉interrupt标识，此处应该返回false
+    // nf-eg—2-线程B：挂起线程B
     private final boolean parkAndCheckInterrupt() {
+        /** 阻塞挂起当前线程，不会释放当前线程占有的锁资源；直到被另一个线程调用LockSupport.unpark(this)方法唤醒。不需要捕获异常 */
         LockSupport.park(this);
-        //LockSupport.park()不会抛出InterruptedException异常，它只会默默返回，但我们还是可以通过Thread.interrupted()来获得中断标记
+
+        /** 判断线程是否被中断。该方法调用后会将中断标示位清除，即重新设置为false */
         return Thread.interrupted();
     }
 
@@ -883,17 +889,19 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
             // nf-eg—2-线程B：会一直循环，直到拿到锁
             for (; ; ) {
                 // nf-eg—2-线程B：p = 空内容node（head）
+                /** 获得入参节点node的前置节点 */
                 final Node p = node.predecessor();
+
                 // nf-eg—2-线程B：p == head等于true；但是由于线程A先抢到锁，所以tryAcquire(arg)=false，所以不会进入下面的if模块
-                if (p == head && tryAcquire(arg)) { /** tryAcquire(arg) 进行抢锁操作*/
+                if (p == head && tryAcquire(arg)) { /** tryAcquire(arg) 进行抢锁操作，返回是否成功*/
                     setHead(node); // 更新头节点为入参node
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
-                // nf-eg—2-线程B：shouldParkAfterFailedAcquire方法，用户设置p节点的waitStatus=Node.SIGNAL，返回false
+                // nf-eg—2-线程B：shouldParkAfterFailedAcquire方法，用户设置node的前置节点p的waitStatus=Node.SIGNAL，返回false
                 // nf-eg—2-线程B：parkAndCheckInterrupt方法，挂起线程B，判断线程B是否被执行过interrupt，并且清除掉interrupt标识，此处为false
-                if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) {
+                if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt()) { /** 阻塞 */
                     interrupted = true;
                 }
             }
@@ -1249,6 +1257,11 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
         //                addWaiter方法，构建承载线程B的node，然后添加到队列末尾，并返回该node
         //                acquireQueued方法，
         // f-eg—1-线程A：  尝试获得公平锁
+        /**
+         * tryAcquire(1): 判断当前线程是否成功的抢占锁
+         * addWaiter(Node.EXCLUSIVE): 构建一个独占模式节点Node，并维护好该节点的前后指针Node
+         * acquireQueued(addWaiter(Node.EXCLUSIVE), 1)：
+         */
         if (!tryAcquire(arg) && acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) {
             // 设置当前线程的中断标识
             selfInterrupt();
@@ -1317,6 +1330,7 @@ public abstract class AbstractQueuedSynchronizer extends AbstractOwnableSynchron
      */
     // nf-eg—1-线程A：arg=1
     public final boolean release(int arg) {
+        /** 判断是否可以进行释放锁操作 */
         if (tryRelease(arg)) { // nf-eg—1-线程A：AQS.state=0，AQS.exclusiveOwnerThread=null
             Node h = head;
             // nf-eg—1-线程A：满足条件 h.waitStatus==SIGNAL(-1)
