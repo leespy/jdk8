@@ -147,8 +147,8 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             // nf-eg—2：由于线程A已经将state置为1，所以c=1
             int c = getState();
             if (c == 0) { // nf-eg—2：线程B，不满足，不执行
-                setExclusiveOwnerThread(current);
                 if (compareAndSetState(0, acquires)) {
+                    setExclusiveOwnerThread(current);
                     return true;
                 }
             } else if (current == getExclusiveOwnerThread()) { // nf-eg—2：线程B 不满足，不执行
@@ -280,24 +280,30 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         }
 
         /**
-         * Fair version of tryAcquire.  Don't grant access unless
-         * recursive call or no waiters or is first.
+         * 判断当前线程是否成功的抢占锁
+         * 抢占成功条件：
+         * case1> 没人抢占锁，线程A执行抢占锁操作，执行成功。
+         * case2> 有人已经抢占了这个锁，但是抢占这个锁的线程就是线程A自己，那么对自己重入加锁，执行成功。
          *
-         * 尝试获得公平锁
+         * true：抢占到了锁  false：没有抢到锁
          */
         // f-eg—1-线程A：arg=1
         protected final boolean tryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             // f-eg—1-线程A：由于线程A第一次进入，c=AQS.state=0
             int c = getState();
-            if (c == 0) {/** 如果c==0，说明可以抢占锁 */
+            /** 如果c == 0，说明可以抢占锁 */
+            if (c == 0) {
                 // f-eg—1-线程A：hasQueuedPredecessors false
                 // f-eg—1-线程A：compareAndSetState true
+                /** 如果线程不需要排队 并且 抢占锁成功（即：如果state=0，则将该值修改为1，CAS操作成功）*/
                 if (!hasQueuedPredecessors() && compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current); // f-eg—1-线程A：AQS.exclusiveOwnerThread=current，返回true
                     return true;
                 }
-            } else if (current == getExclusiveOwnerThread()) {
+            }
+            /** 如果c != 0，判断，是否是重入操作（即：锁本来就是被自己抢占的，支持多次抢占。） */
+            else if (current == getExclusiveOwnerThread()) {
                 int nextc = c + acquires;
                 if (nextc < 0) {
                     throw new Error("Maximum lock count exceeded");
