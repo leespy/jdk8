@@ -133,7 +133,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * 处理内容：
          * 1>如果抢到锁，返回true
          *   1.1>如果当前线程第一次抢到锁:
-         *        AQS.status由0变为1
+         *        AQS.state由0变为1
          *        AQS.exclusiveOwnerThread=Thread.currentThread()
          *        返回true
          *   1.2>如果当前线程再次抢到锁(重入加锁):
