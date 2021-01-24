@@ -263,13 +263,18 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
             /**
              * 尝试匹配节点，如果存在匹配节点则判断是否是当前节点，直接返回判断结果，如果没有则替换match内容并且唤醒线程
              */
+            // eg3: s表示新进入堆栈的节点
             boolean tryMatch(SNode s) {
+                // eg3: match=null 将match复制为s成功。
                 if (match == null && UNSAFE.compareAndSwapObject(this, matchOffset, null, s)) {
                     Thread w = waiter;
+                    // eg3: w不为null
                     if (w != null) {    // waiters need at most one unpark
                         waiter = null;
+                        // eg3: 唤醒w线程
                         LockSupport.unpark(w);
                     }
+                    // eg3:返回true
                     return true;
                 }
                 return match == s;
@@ -347,7 +352,8 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          */
         @SuppressWarnings("unchecked")
         // eg1： e=command:Runnable timed=true nanos=0
-        // eg2： e=command:Runnable timed=true nanos=0
+        // eg2： e=null timed=true unit=60000000000
+        // eg3： e=command:Runnable timed=true nanos=0
         E transfer(E e, boolean timed, long nanos) {
             /*
              * Basic algorithm is to loop trying one of three actions:
@@ -372,15 +378,18 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
 
             SNode s = null;
             // eg1： 因为e=command:Runnable不为null，所以mode=DATA
-            // eg2： 因为e=command:Runnable不为null，所以mode=DATA
+            // eg2： 因为e=为null，所以mode=REQUEST
+            // eg3： 因为e=command:Runnable不为null，所以mode=DATA
             int mode = (e == null) ? REQUEST : DATA; /** REQUEST表示消费者，DATE表示提供者 */
-R
+
             for (;;) {
                 SNode h = head;
                 // eg1: h == null
-                // eg2: h != null h.mode=0
+                // eg2: h == null
+                // eg3: h != null h.mode=REQUEST=0
                 if (h == null || h.mode == mode) { /** 栈顶指针为空或者是模式相同 */
                     // eg1: timed=true nanos=0
+                    // eg2: timed=true nanos=60000000000
                     if (timed && nanos <= 0) { /** 指定了timed并且时间小于等于0则取消操作。*/
                         // eg1: h == null
                         if (h != null && h.isCancelled()) {
@@ -389,9 +398,13 @@ R
                             // eg1: return null
                             return null;
                         }
-                    } else if (casHead(h, s = snode(s, e, h, mode))) { /** 创建新节点并且修改该节点为栈顶指针（数据结构为堆存储） */
+                    }
+                    // eg2: timed=true nanos=60000000000
+                    else if (casHead(h, s = snode(s, e, h, mode))) { /** 创建新节点并且【修改该节点为head指针】（数据结构为堆存储） */
+                        // eg2: timed=true nanos=60000000000
                         SNode m = awaitFulfill(s, timed, nanos); /** 进行等待操作 */
                         if (m == s) { /** 返回内容是本身则进行清理操作 */
+                            // eg2: 如果走到这步，就说明已经等待了60秒，依然没有进入队列的操作，所以获取队列的行为
                             clean(s);
                             return null;
                         }
@@ -400,21 +413,24 @@ R
                         return (E) ((mode == REQUEST) ? m.item : s.item);
                     }
                 }
-                // eg2: h != null h.mode=0
+                // eg3: h != null h.mode=REQUEST=0
                 else if (!isFulfilling(h.mode)) { /** 尝试去匹配 */
-                    // eg2: h.isCancelled() = true
+                    // eg3: h.isCancelled() = false
                     if (h.isCancelled())            /** 判断是否已经被取消 */
-                        // eg2: h.next = null
                         casHead(h, h.next);         /** 弹出取消的节点并且从新进入主循环 */
                     else if (casHead(h, s=snode(s, e, h, FULFILLING|mode))) { /** 新建一个Full节点压入栈顶 */
                         for (;;) { /** 循环直到匹配 */
+                            // eg3: s.next为之前的head指针指向的节点
                             SNode m = s.next;           /** s的下一个节点为匹配节点 */
+                            // eg3: m不为null
                             if (m == null) {            /** 代表没有等待内容了 */
                                 casHead(s, null);   /** 弹出full节点 */
                                 s = null;               /** 设置为null用于下次生成新的节点 */
                                 break;                  /** 退回到主循环中 */
                             }
+                            // eg3: mn=null
                             SNode mn = m.next;
+                            // eg3: m.tryMatch(s)=true
                             if (m.tryMatch(s)) {
                                 casHead(s, mn);         /** 弹出s节点和m节点两个节点 */
                                 return (E) ((mode == REQUEST) ? m.item : s.item);
@@ -445,20 +461,30 @@ R
          * @param nanos timeout value
          * @return matched node, or s if cancelled
          */
+        // eg2: timed=true nanos=60000000000
         SNode awaitFulfill(SNode s, boolean timed, long nanos) {
+            // eg2: deadline=System.nanoTime()+nanos
             final long deadline = timed ? System.nanoTime() + nanos : 0L;
             Thread w = Thread.currentThread(); /** 当前线程 */
+
+            // eg2: spins=maxTimedSpins=32 （如果CPU大于2核）
             int spins = (shouldSpin(s) ? (timed ? maxTimedSpins : maxUntimedSpins) : 0); /** 等待时间设置 */
+
             for (;;) {
+                // eg2: false
                 if (w.isInterrupted()) { /** 判断当前线程是否被中断 */
                     s.tryCancel(); /** 尝试取消操作 */
                 }
+                // eg2: m=null
                 SNode m = s.match; /** 获取当前节点的匹配节点，如果节点不为null代表匹配或取消操作，则返回 */
                 if (m != null)
                     return m;
+                // eg2: timed=true
                 if (timed) {
                     nanos = deadline - System.nanoTime();
                     if (nanos <= 0L) {
+                        // eg2: timed=true
+                        /** 将当前节点的match值设置为当前节点，即：m=s，那么上面判断m!=null 则return m； 成立 */
                         s.tryCancel();
                         continue;
                     }
@@ -478,8 +504,9 @@ R
          * 判断节点是否是fulfill节点，或者是头结点为空再或者是头结点和当前节点相等时则不需要进行轮训操作
          */
         boolean shouldSpin(SNode s) {
+            // eg2: head节点就是s节点。因为在上面的步骤中，将head指针指向了s节点。
             SNode h = head;
-            return (h == s || h == null || isFulfilling(h.mode));
+            return (h == s || h == null || isFulfilling(h.mode)); // eg2: h == s 返回true
         }
 
         /**
@@ -952,6 +979,7 @@ R
      *         specified waiting time elapses before an element is present
      * @throws InterruptedException {@inheritDoc}
      */
+    // eg1: timeout=60L, unit=TimeUnit.NANOSECONDS
     public E poll(long timeout, TimeUnit unit) throws InterruptedException {
         E e = transferer.transfer(null, true, unit.toNanos(timeout));
         if (e != null || !Thread.interrupted())

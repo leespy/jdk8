@@ -1151,7 +1151,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
 
             int wc = workerCountOf(c);
 
-            // timed用于判断是否需要进行超时控制，当allowCoreThreadTimeOut被设置为ture或者活跃线程数大于核心线程数，则需要进行超时控制
+            // timed用于判断是否需要进行超时控制，当allowCoreThreadTimeOut被设置为true或者活跃线程数大于核心线程数，则需要进行超时控制
             // allowCoreThreadTimeOut默认为false，则表明核心线程不允许超时
             boolean timed = allowCoreThreadTimeOut || wc > corePoolSize;
 
@@ -1172,8 +1172,10 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             }
 
             try {
-                // 如果需要超时控制，则通过阻塞队列的poll方法进行超时控制，
-                // 否则，直接获取，如果队列为空，task方法会阻塞直到队列不为空
+                /**
+                 * ​poll(time)：取走BlockingQueue里排在首位的对象,若不能立即取出,则可以等time参数规定的时间,取不到时返回null
+                 * ​take()：取走BlockingQueue里排在首位的对象,若BlockingQueue为空,阻断进入等待状态直到Blocking有新的对象被加入为止
+                 */
                 Runnable r = timed ?
                         workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) : // poll -->若队列为空，返回null
                         workQueue.take(); // take --> 若队列为空，发生阻塞，等待元素
@@ -1490,7 +1492,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                  * null：只创建线程，但不去启动
                  * false：添加线程时，根据maximumPoolSize来判断
                  *
-                 * 如果 (workerCountOf(recheck) > 0, 则直接返回，在队列中的command稍后会出队列并且执行
+                 * 如果 workerCountOf(recheck) > 0, 则直接返回，在队列中的command稍后会出队列并且执行
                  */
                 addWorker(null, false);
             }
