@@ -1487,8 +1487,6 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                 reject(command);
             } else if (workerCountOf(recheck) == 0) { // 如果【当前活动的线程数】为0，则执行addWork方法
                 /**
-                 * 为什么要执行addWorker(null, false)
-                 *
                  * null：只创建线程，但不去启动
                  * false：添加线程时，根据maximumPoolSize来判断
                  *
