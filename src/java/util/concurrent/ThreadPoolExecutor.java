@@ -1463,7 +1463,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         /** ctl记录着workCount和runState */
         int c = ctl.get();
 
-        /** case1: 如果线程池中的线程数量小于核心线程数，那么创建线程并执行*/
+        /** 第一步: 如果线程池中的线程数量小于核心线程数，那么创建线程并执行*/
         if (workerCountOf(c) < corePoolSize) { // workerCountOf(c): 获取当前活动的线程数
             /**
              * 在线程池中新建一个新的线程
