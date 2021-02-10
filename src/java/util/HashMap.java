@@ -711,6 +711,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                     // eg3: p.next == null
                     // eg4-loop1: p.next == Node(16, 16, "a16", null) 不为空
                     // eg4-loop2: p.next == null
+                    /** 获得p节点的后置节点，赋值给e。直到遍历到横向链表的最后一个节点，即：该节点的next后置指针为null */
                     if ((e = p.next) == null) {
                         // eg3: p.next = newNode(16, 16, "a16", null);
                         // eg4-loop2: p.next == newNode(32, 32, "a32", null);
@@ -729,6 +730,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                         break;
                     }
                     // eg4-loop1: e.hash==16 hash==32 所以返回false
+                    /** 针对链表中的每个节点，都来判断一下，是否待插入的key与已存在的链表节点相同，如果相同，则跳出循环，并在后续的操作中，将该节点内容更新为最新的插入值 */
                     if (e.hash == hash && ((k = e.key) == key || (key != null && key.equals(k)))) {
                         break;
                     }
@@ -838,6 +840,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
         // eg1: oldTab=null
         if (oldTab != null) { /** 如果老的table里有数据，则进行数据迁移*/
             // eg6: oldCap=16
+            /** 循环纵向数组中的每个槽位Cap */
             for (int j = 0; j < oldCap; ++j) {
                 Node<K, V> e;
                 // eg6-loop1: j=0, e=oldTab[0]=Node(0, 0, "a0", nodeRef)
@@ -888,7 +891,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                                     // eg6-loop1-loop5: loTail.next=e=Node(64, 64, "a64", nodeRef)
                                     // eg6-loop1-loop7: loTail.next=e=Node(96, 96, "a96", nodeRef)
                                     // eg6-loop1-loop9: loTail.next=e=Node(128, 128, "a128", nodeRef)
-                                    loTail.next = e;
+                                    loTail.next = e; /** 建立新的链表 */
                                 }
                                 // eg6-loop1-loop1: loTail=e=Node(0, 0, "a0", nodeRef)
                                 // eg6-loop1-loop3: loTail=e=Node(32, 32, "a32", nodeRef)
@@ -896,8 +899,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                                 // eg6-loop1-loop7: loTail=e=Node(96, 96, "a96", nodeRef)
                                 // eg6-loop1-loop9: loTail=e=Node(128, 128, "a128", nodeRef)
                                 loTail = e; /** 将loTail指向oldTab数组第一个下标的最后一个元素e*/
-                            }
-                            else { /** 如果不是oldTab中的第一个下标Node*/
+                            } else { /** 如果不是oldTab中的第一个下标Node*/
                                 if (hiTail == null) {
                                     // eg6-loop1-loop2: hiHead=e=Node(16, 16, "a16", nodeRef)
                                     hiHead = e;
@@ -905,7 +907,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                                     // eg6-loop1-loop4: hiTail.next=e=Node(48, 48, "a48", nodeRef)
                                     // eg6-loop1-loop6: hiTail.next=e=Node(80, 80, "a80", nodeRef)
                                     // eg6-loop1-loop8: hiTail.next=e=Node(112, 112, "a112", nodeRef)
-                                    hiTail.next = e;
+                                    hiTail.next = e; /** 建立新的链表 */
                                 }
                                 // eg6-loop1-loop2: hiTail=e=Node(16, 16, "a16", nodeRef)
                                 // eg6-loop1-loop4: hiTail=e=Node(48, 48, "a48", nodeRef)
@@ -923,7 +925,7 @@ public class HashMap<K, V> extends AbstractMap<K, V> implements Map<K, V>, Clone
                         // eg6-loop1-loop7: e=next=Node(112, 112, "a112", nodeRef)
                         // eg6-loop1-loop8: e=next=Node(128, 128, "a128", nodeRef)
                         // eg6-loop1-loop9: e=next=null
-                        while ((e = next) != null);
+                        while ((e = next) != null); /** do-while */
 
                         // eg6-loop1: loTail=Node(128, 128, "a128", null)
                         if (loTail != null) {

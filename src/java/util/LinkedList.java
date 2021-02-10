@@ -140,15 +140,20 @@ public class LinkedList<E> extends AbstractSequentialList<E> implements List<E>,
     // eg1: e="a1"
     void linkLast(E e) {
         final Node<E> l = last;
+
         // eg1: newNode    null<--"a1"-->null
+        /** 创建一个e的Node节点，前置指向原last节点，后置指向null */
         final Node<E> newNode = new Node<>(l, e, null);
+
+        /** 将newNode节点赋值为last节点 */
         last = newNode;
+
         // eg1: l=null
         if (l == null) {
             /** 如果是第一个添加的元素，则first指针指向该结点*/
             first = newNode; // eg1: first指向newNode
         } else {
-            /** 如果不是第一个添加进来的元素，则更新l的后置结点指向新添加的元素结点*/
+            /** 如果不是第一个添加进来的元素，则更新l的后置结点指向新添加的元素结点newNode*/
             l.next = newNode;
         }
         size++;

@@ -256,7 +256,6 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
         // eg1: modCount++后，modCount=1
         modCount++;
 
-
         /** 如果所需的最小容量大于elementData数组的容量，则进行扩容操作 */
         if (minCapacity - elementData.length > 0) { // eg1：10-0=10，满足扩容需求
             // eg1：minCapacity=10
@@ -322,8 +321,7 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
     }
 
     private static int hugeCapacity(int minCapacity) {
-        if (minCapacity < 0) // overflow
-        {
+        if (minCapacity < 0) { // overflow
             throw new OutOfMemoryError();
         }
         return (minCapacity > MAX_ARRAY_SIZE) ? Integer.MAX_VALUE : MAX_ARRAY_SIZE;
@@ -512,10 +510,16 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
      * @throws IndexOutOfBoundsException {@inheritDoc}
      */
     public E set(int index, E element) {
+        /** 判断index是否超出了ArrayList中包含的元素数量，如果超出，则抛出IndexOutOfBoundsException异常 */
         rangeCheck(index);
 
+        /** 获得index下标对应的旧值 */
         E oldValue = elementData(index);
+
+        /** 将index下标对应的值，赋值为新值——element */
         elementData[index] = element;
+
+        /** 返回index下标对应的旧值 */
         return oldValue;
     }
 
@@ -526,6 +530,7 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
     public boolean add(E e) {
         /** 确定是否需要扩容，如果需要，则进行扩容操作*/
         ensureCapacityInternal(size + 1);  // Increments modCount!!
+
         // eg1：size=0，elementData[0]="a1"，然后a自增为1
         elementData[size++] = e;
         return true;
@@ -558,22 +563,25 @@ public class ArrayList<E> extends AbstractList<E> implements List<E>, RandomAcce
         /** 校验传入的参数index是否超出了数组的最大下标，如果超出，则抛出：IndexOutOfBoundsException异常*/
         rangeCheck(index);
 
+        /** 集合的修改次数加1 */
         modCount++;
 
         // eg1：String oldValue="a1"
+        /** 获得index下标对应的旧值oldValue */
         E oldValue = elementData(index);
 
         // eg1：numMoved=4-0-1=3
+        /** 获得需要移动元素的个数 */
         int numMoved = size - index - 1;
         if (numMoved > 0) {
             /** 从需要删除的index后一位开始到末尾的这部分数据，整体都向前移动一个元素。*/
-            System.arraycopy(elementData, index + 1, elementData, index,
-                    numMoved);
+            System.arraycopy(elementData, index + 1, elementData, index, numMoved);
         }
-        // 通知jvm将之前的最后一位元素进行垃圾回收
+        /** 通知jvm将之前的最后一位元素进行垃圾回收 */
         elementData[--size] = null; // clear to let GC do its work
 
-        return oldValue; // 返回已被删除的元素
+        /** 返回已被删除的元素 */
+        return oldValue;
     }
 
     /**
